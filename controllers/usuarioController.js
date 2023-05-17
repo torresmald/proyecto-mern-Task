@@ -39,7 +39,6 @@ const registrarUsuarios = async (request, response, next) => {
     } catch (error) {
         console.log(error);
     }
-
 }
 
 const loginUsuarios = async (request, response, next) => {
@@ -54,7 +53,7 @@ const loginUsuarios = async (request, response, next) => {
         return response.status(404).json({ msg: error.message })
     }
     const isValidPassword = await bcrypt.compare(password, usuario.password);
-    if(!isValidPassword){
+    if (!isValidPassword) {
         const error = new Error('El password no es válido')
         return response.status(403).json({ msg: error.message })
     }
@@ -63,9 +62,9 @@ const loginUsuarios = async (request, response, next) => {
 }
 
 const confirmarToken = async (request, response, next) => {
-    const {token} = request.params;
-    const usuarioConfirmado = await Usuario.findOne({token});
-    if(!usuarioConfirmado){
+    const { token } = request.params;
+    const usuarioConfirmado = await Usuario.findOne({ token });
+    if (!usuarioConfirmado) {
         const error = new Error('El Token no es válido')
         return response.status(404).json({ msg: error.message })
     }
@@ -73,10 +72,57 @@ const confirmarToken = async (request, response, next) => {
         usuarioConfirmado.confirmado = true;
         usuarioConfirmado.token = '';
         await usuarioConfirmado.save();
-        response.status(200).json({msg: 'Usuario confirmado'})
+        response.status(200).json({ msg: 'Usuario confirmado' })
     } catch (error) {
         console.log(error);
     }
 }
 
-export { registrarUsuarios, obtenerUsuarios, loginUsuarios, confirmarToken }
+const forgotPassword = async (request, response, next) => {
+    const { email } = request.body;
+    const usuarioExistente = await Usuario.findOne({ email })
+    if (!usuarioExistente) {
+        const error = new Error('El usuario no existe')
+        return response.status(404).json({ msg: error.message })
+    }
+    try {
+        usuarioExistente.token = generarId();
+        await usuarioExistente.save();
+        response.status(200).json({ msg: 'Se han enviado las instrucciones para resetar el password' })
+    } catch (error) {
+        console.log(error);
+    }
+}
+const comprobarToken = async (request, response, next) => {
+    const { token } = request.params;
+    const tokenValido = await Usuario.findOne({ token });
+    if (tokenValido) {
+        response.status(200).json({ msg: 'Token Valido' })
+    } else {
+        const error = new Error('El Token no es valido')
+        return response.status(404).json({ msg: error.message })
+    }
+}
+const nuevoPassword = async (request, response, next) => {
+    const { token } = request.params;
+    const { password } = request.body;
+    const usuario = await Usuario.findOne({ token });
+    if (usuario) {
+        const encryptedPassword = await bcrypt.hash(password.toString(), parseInt(10));
+        usuario.password = encryptedPassword;
+        usuario.token = '';
+        await usuario.save();
+        response.status(200).json({ msg: 'Password Modificado' });
+    } else {
+        const error = new Error('El Token no es valido')
+        return response.status(404).json({ msg: error.message })
+    }
+}
+
+const perfil = async (request, response, next) => {
+    const {usuario } = request;
+    response.status(200).json(usuario);
+}
+
+
+export { registrarUsuarios, obtenerUsuarios, loginUsuarios, confirmarToken, forgotPassword, comprobarToken, nuevoPassword, perfil }
