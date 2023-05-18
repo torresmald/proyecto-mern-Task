@@ -2,6 +2,7 @@ import Usuario from '../models/Usuario.js';
 import bcrypt from 'bcrypt';
 import generarId from '../helpers/generarId.js';
 import generarJWT from '../helpers/generarJWT.js';
+import { enviarEmail, enviarEmailPassword } from '../helpers/email.js';
 
 const obtenerUsuarios = async (request, response, next) => {
     try {
@@ -21,7 +22,7 @@ const registrarUsuarios = async (request, response, next) => {
         const { email, password, nombre } = request.body;
         const usuarioExistente = await Usuario.findOne({ email })
         if (usuarioExistente) {
-            const error = new Error('El usuario ya existe')
+            const error = new Error('El usuario ya existe, loguéate')
             return response.status(404).json({ msg: error.message })
         }
         const encryptedPassword = await bcrypt.hash(password.toString(), parseInt(10));
@@ -34,8 +35,13 @@ const registrarUsuarios = async (request, response, next) => {
             nombre,
             token: generarId()
         });
-        const usuarioAlmacenado = await usuario.save();
-        response.status(200).json(usuarioAlmacenado)
+        enviarEmail({
+            nombre: usuario.nombre,
+            email: usuario.email,
+            token: usuario.token
+        })
+        await usuario.save();
+        response.status(200).json({ msg: 'Usuario Creado Correctamente, revista tu email para Confirmar tu Cuenta' })
     } catch (error) {
         console.log(error);
     }
@@ -54,7 +60,7 @@ const loginUsuarios = async (request, response, next) => {
     }
     const isValidPassword = await bcrypt.compare(password, usuario.password);
     if (!isValidPassword) {
-        const error = new Error('El password no es válido')
+        const error = new Error('El password no es correcto')
         return response.status(403).json({ msg: error.message })
     }
     usuario.token = generarJWT(usuario._id)
@@ -88,7 +94,12 @@ const forgotPassword = async (request, response, next) => {
     try {
         usuarioExistente.token = generarId();
         await usuarioExistente.save();
-        response.status(200).json({ msg: 'Se han enviado las instrucciones para resetar el password' })
+        enviarEmailPassword({
+            nombre: usuarioExistente.nombre,
+            email: usuarioExistente.email,
+            token: usuarioExistente.token
+        })
+        response.status(200).json({ msg: 'Se ha enviado un email para resetar el password' })
     } catch (error) {
         console.log(error);
     }
@@ -109,10 +120,14 @@ const nuevoPassword = async (request, response, next) => {
     const usuario = await Usuario.findOne({ token });
     if (usuario) {
         const encryptedPassword = await bcrypt.hash(password.toString(), parseInt(10));
-        usuario.password = encryptedPassword;
-        usuario.token = '';
-        await usuario.save();
-        response.status(200).json({ msg: 'Password Modificado' });
+            usuario.password = encryptedPassword;
+            usuario.token = '';
+        try {
+            await usuario.save();
+            response.status(200).json({ msg: 'Password Modificado' });
+        } catch (error) {
+            console.log(error);
+        }
     } else {
         const error = new Error('El Token no es valido')
         return response.status(404).json({ msg: error.message })
@@ -120,7 +135,7 @@ const nuevoPassword = async (request, response, next) => {
 }
 
 const perfil = async (request, response, next) => {
-    const {usuario } = request;
+    const { usuario } = request;
     response.status(200).json(usuario);
 }
 
