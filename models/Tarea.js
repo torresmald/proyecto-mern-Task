@@ -26,9 +26,13 @@ const tareaSchema = mongoose.Schema({
         enum: ['Baja', 'Media', 'Alta']
     },
     proyecto: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Proyecto'
-    }
+        type: mongoose.Types.ObjectId,
+        ref: "Proyecto",
+    },
+    completado: {
+        type: mongoose.Types.ObjectId,
+        ref: "Usuario",
+    },
 }, {
     timestamps: true
 })

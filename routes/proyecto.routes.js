@@ -1,5 +1,4 @@
-import { obtenerProyectos, obtenerProyecto, nuevoProyecto, editarProyecto, eliminarProyecto, eliminarColaborador, agregarColaborador } from '../controllers/proyectoController.js';
-import comprobarIdMongo from '../middlewares/comprobarIdMongo.js';
+import { obtenerProyectos, obtenerProyecto, nuevoProyecto, editarProyecto, eliminarProyecto, buscarColaborador, eliminarColaborador, agregarColaborador } from '../controllers/proyectoController.js';
 import isAuth from '../middlewares/isAuth.js';
 import express from 'express';
 
@@ -14,6 +13,8 @@ router.route('/:id')
     .put(isAuth, editarProyecto)
     .delete(isAuth, eliminarProyecto);
 
+router.route('/buscarColaborador')
+    .post(isAuth, buscarColaborador)
 router.route('/agregarColaborador/:id')
     .post(isAuth, agregarColaborador);
 router.route('/eliminarColaborador/:id')

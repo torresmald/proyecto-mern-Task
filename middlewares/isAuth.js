@@ -15,7 +15,6 @@ const isAuth = async (req, res, next) => {
       req.usuario = await Usuario.findById(decoded.id).select(
         "-password -confirmado -token -createdAt -updatedAt -__v"
       );
-
       return next();
     } catch (error) {
       return res.status(404).json({ msg: "Hubo un error" });

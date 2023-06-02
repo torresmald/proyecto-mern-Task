@@ -27,6 +27,8 @@ const agregarTarea = async (request, response) => {
     }
     try {
         const tareaAlmacenada = await Tarea.create(request.body);
+        proyectoExistente.tareas.push(tareaAlmacenada._id);
+        await proyectoExistente.save();
         return response.status(200).json(tareaAlmacenada);
     } catch (error) {
         console.log(error);
@@ -65,15 +67,34 @@ const eliminarTarea = async (request, response) => {
         return response.status(403).json({ msg: error.message })
     }
     try {
-        const tareaEliminada = await Tarea.findByIdAndDelete(id);
-        return response.status(200).json({msg: 'Tarea Eliminada'})        
+        const proyecto = await Proyecto.findById(tarea.proyecto);
+        proyecto.tareas.pull(tarea._id);
+    
+        await Promise.allSettled([await proyecto.save(),await Tarea.findByIdAndDelete(id)])
+        return response.status(200).json({ msg: 'Tarea Eliminada' })
     } catch (error) {
         console.log(error);
     }
-    
+
 }
 const cambiarEstado = async (request, response) => {
+    const { id } = request.params;
+    const tarea = await Tarea.findById(id).populate('proyecto');
+    if (!tarea) {
+        const error = new Error('Tarea no encontrada');
+        return response.status(404).json({ msg: error.message })
+    }
+    if (tarea.proyecto.creador.toString() !== request.usuario._id.toString() && !tarea.proyecto.colaboradores.some((colaborador) => colaborador._id.toString() === request.usuario._id.toString())) {
+        const error = new Error('No tienes los permisos');
+        return response.status(403).json({ msg: error.message })
+    }
+    tarea.estado = !tarea.estado
+    tarea.completado = request.usuario._id;
 
+    await tarea.save();
+    const tareaAlmacenada = await Tarea.findById(id).populate('proyecto').populate('completado');
+
+    response.status(200).json(tareaAlmacenada);
 }
 
 export { obtenerTarea, agregarTarea, editarTarea, eliminarTarea, cambiarEstado }
